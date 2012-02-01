@@ -132,10 +132,13 @@ class Speaker():
                     ret.append(p)
                     p = tone3_list.pop()
                     ret.append(p)
-                else:
+                elif len(tone3_list) >= 2:
                     p = tone3_list.pop()
                     p = p.replace('3', '2')
                     ret.append(p)
+                    p = tone3_list.pop()
+                    ret.append(p)
+                else:
                     p = tone3_list.pop()
                     ret.append(p)
             return ret
@@ -153,7 +156,6 @@ class Speaker():
         if tone3:
             ret = ret + handle_tone3(tone3)
 
-        print ret
         return ret
 
     def speak_words(self, mixer, words):
@@ -173,7 +175,7 @@ class Speaker():
 def main():
     pygame.mixer.init(44100, -16, 1, 4096)
     speaker = Speaker()
-    channel = speaker.speak_words(pygame.mixer, u"普想普想普普想")
+    channel = speaker.speak_words(pygame.mixer, u"想想想想想")
     while channel.get_busy():
         pygame.time.wait(1000)
 

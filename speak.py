@@ -7,6 +7,23 @@ import inspect
 import pygame
 import wave
 
+gloable_enc = 'gbk'
+def decode_str(words):
+    try:
+        words = words.decode(gloable_enc)
+        return words
+    except:
+        pass
+
+    for c in ('utf-8', 'gbk', 'big5', 'jp', 'utf16','utf32'):
+        try:
+            words = words.decode(c)
+            gloable_enc = c
+            break
+        except:
+            pass
+    return words 
+    
 class Speaker():
     max_word_lookahead = 0
     mappings={}
@@ -23,7 +40,6 @@ class Speaker():
             rf = wave.open(wave_file, 'rb') 
             self.nchannels, self.sampwidth, self.framerate, \
             self.nframes, self.omptype, self.compname = rf.getparams()
-            print rf.getparams()
             rf.close()
             # fullpause is 0.5 secs
             self.fullpause = '\0'*(self.framerate/2)*self.sampwidth
@@ -37,9 +53,8 @@ class Speaker():
             self.omptype = 0
             self.compname = 0
 
-    def check_special_phon(self, zh_word, pinyin):
+    def check_special_phon(self, zh_word, pinyins):
         zh_word = unicode(zh_word, "utf-8")
-        pinyins = pinyin.split(' ')
         if zh_word[0] == unichr(0x4e00) or zh_word[0] == unichr(0x4e0d):
             if pinyins[0][-1] == "2":
                 return False
@@ -47,9 +62,9 @@ class Speaker():
             if zh_word[i] == unichr(0x4e00) or zh_word[i] == unichr(0x4e0d):
                 if i + 1 != len(zh_word) and pinyins[i][-1] == "2" and pinyins[i+1][-1] == "4":
                     pass
-            if self.mappings.has_key(zh_word[i]):
+            if zh_word[i] in self.mappings:
                 pin = self.mappings[zh_word[i]]
-                pin = pin.split(' ')[0]
+                pin = pin[0]
                 if pin[-1] != pinyins[i][-1]:
                     return True 
             else:
@@ -62,21 +77,23 @@ class Speaker():
             ifile = open(filename)
         except:
             print("**WARNING** Cannot open \""+filename+"\".")
-            return()
+            return
 
         print "Loading " + filename + "..."
         self.max_word_lookahead = 0
-        for l in ifile.xreadlines():
+        for l in ifile:
             zh_word, pinyin = l.strip().split(' ', 1)
             if '(' in zh_word:
                 zh_word = zh_word.replace("(","").replace(")","").replace(" ","")
-                for i in range(0, 10):
+                for i in range(0, 6):
                     pinyin = pinyin.replace(str(i), str(i) + " ")
-                pinyin.rstrip()
-                if not self.check_special_phon(zh_word, pinyin):
+                pinyins = pinyin.rstrip().split(' ')
+                if not self.check_special_phon(zh_word, pinyins):
                     continue
+            else:
+                pinyins = pinyin.rstrip().split(' ')
             zh_word = unicode(zh_word, "utf-8")
-            self.mappings[zh_word] = pinyin
+            self.mappings[zh_word] = pinyins
             self.max_word_lookahead = max(self.max_word_lookahead, len(zh_word))
         print "Loaded " + filename
         ifile.close()
@@ -136,7 +153,7 @@ class Speaker():
             print "%s\t%s" % (k.encode("utf-8"), v)
 
     def handle_delayed(self, delayed, tone4):
-        pinyins = self.mappings[delayed].split(" ")
+        pinyins = self.mappings[delayed]
         if tone4:
             pinyin = pinyins[0][:-1]+'2'
         else:
@@ -144,9 +161,7 @@ class Speaker():
         return pinyin
 
     def words2pinyin(self, words):
-        # convert to Unicode if not already
-        if not type(words)==type(u""):
-            words = unicode(words, "utf-8")
+        words = decode_str(words)
         pinyin_list = []
         i = 0
         length = len(words)
@@ -155,14 +170,13 @@ class Speaker():
             found = False
             max_word_len = min(length-i, self.max_word_lookahead)
             for num_word in range(max_word_len, 0, -1):
-                if self.mappings.has_key(words[i:i+num_word]):
-                    pinyin = self.mappings[words[i:i+num_word]]
-                    pinyins = pinyin.split(" ")
+                if words[i:i+num_word] in self.mappings:
+                    pinyins = self.mappings[words[i:i+num_word]]
                     if num_word == 1 and len(pinyins) > 1:
                         if delayed != None:
-                            print "after", pinyins[0]
-                            pinyin_list.append(self.handle_delayed(delayed,
-                                    words[i] != delayed and pinyins[0][-1] == '4'))
+                            p = self.handle_delayed(delayed,
+                                    words[i] != delayed and pinyins[0][-1] == '4')
+                            pinyin_list.append(p)
                             delayed = None
                         #delayed handling of "不" and "一"
                         if words[i] == unichr(0x4e00) or words[i] == unichr(0x4e0d):
@@ -171,8 +185,9 @@ class Speaker():
                             pinyin_list.append(pinyins[0])
                     else:
                         if delayed != None:
-                            pinyin_list.append(self.handle_delayed(delayed,
-                                    words[i] != delayed and pinyins[0][-1] == '4'))
+                            p = self.handle_delayed(delayed,
+                                    words[i] != delayed and pinyins[0][-1] == '4')
+                            pinyin_list.append(p)
                             delayed = None
                         for p in pinyins: pinyin_list.append(p);
                     found = True
@@ -180,12 +195,14 @@ class Speaker():
                     break
             if not found:
                 if delayed != None:
-                    pinyin_list.append(self.handle_delayed(delayed, False))
+                    p = self.handle_delayed(delayed, False)
+                    pinyin_list.append(p)
                     delayed = None
                 pinyin_list.append('.')
                 i += 1
         if delayed != None:
-            pinyin_list.append(self.handle_delayed(delayed, False))
+            p = self.handle_delayed(delayed, False)
+            pinyin_list.append(p)
             delayed = None
 
         # handle tone 3
@@ -247,15 +264,32 @@ class Speaker():
                     rf.close()
                 else:
                     data += self.quaterpause
+        nsamps = len(data) / self.sampwidth
         sound = mixer.Sound(data)
-        return sound.play()
+        return nsamps, sound.play()
 
 def main():
     speaker = Speaker()
     pygame.mixer.init(speaker.framerate, speaker.sampwidth*8, speaker.nchannels, 4096)
-    channel = speaker.speak_words(pygame.mixer, u"想想.普普想")
-    while channel.get_busy():
-        pygame.time.wait(1000)
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as text:
+            for l in text:
+                nsamps, channel = speaker.speak_words(pygame.mixer, l)
+                sound_length = 1000*nsamps/speaker.framerate
+                print type(sound_length), type(nsamps), type(speaker.framerate)
+                print sound_length, nsamps, speaker.framerate
+                while channel.get_busy():
+                    if sound_length > 1000:
+                        pygame.time.wait(1000)
+                        sound_length -= 1000
+                    else:
+                        pygame.time.wait(int(sound_length))
+    else:
+        nsamps, channel = speaker.speak_words(pygame.mixer, u"想想.普普想")
+        sound_length = 1000*nsamps/speaker.framerate
+        pygame.time.wait(sound_length)
+        while channel.get_busy():
+            pygame.time.wait(100)
 
 if __name__ == '__main__':
     main()

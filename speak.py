@@ -10,11 +10,32 @@ import wave
 class Speaker():
     max_word_lookahead = 0
     mappings={}
-    filedir = ""
     def __init__(self):
         this_file = inspect.getfile(inspect.currentframe())
         self.filedir = os.path.abspath(os.path.dirname(this_file))
+        self.check_resource()
         self.read_mandrin_list()
+        self.add_special_symbol()
+
+    def check_resource(self):
+        wave_file = os.path.join(self.filedir, "voices\\pinyin", "a1.wav")
+        if os.path.isfile(wave_file):
+            rf = wave.open(wave_file, 'rb') 
+            self.nchannels, self.sampwidth, self.framerate, \
+            self.nframes, self.omptype, self.compname = rf.getparams()
+            print rf.getparams()
+            rf.close()
+            # fullpause is 0.5 secs
+            self.fullpause = '\0'*(self.framerate/2)*self.sampwidth
+            self.halfpause = '\0'*(self.framerate/4)*self.sampwidth
+            self.quaterpause = '\0'*(self.framerate/8)*self.sampwidth
+        else:
+            self.nchannels = 0
+            self.sampwidth = 0
+            self.framerate = 0
+            self.nframes = 0
+            self.omptype = 0
+            self.compname = 0
 
     def check_special_phon(self, zh_word, pinyin):
         zh_word = unicode(zh_word, "utf-8")
@@ -60,6 +81,56 @@ class Speaker():
         print "Loaded " + filename
         ifile.close()
 
+    def add_special_symbol(self):
+        self.mappings[u'\n'] = '.'
+        self.mappings[u';'] = '.'
+        # Chinese ;
+        self.mappings[unichr(0xff1b)] = '.'
+        self.mappings[u'.'] = '.'
+        # Chinese .
+        self.mappings[unichr(0x3002)] = '.'
+        self.mappings[u'!'] = '.'
+        self.mappings[u'?'] = '.'
+        self.mappings[u'...'] = '.'
+        # Chinese ...
+        self.mappings[unichr(0x2026)] = '.'
+
+        self.mappings[u','] = ','
+        self.mappings[unichr(0xff0c)] = ','
+        self.mappings[u':'] = ','
+        self.mappings[unichr(0xff1a)] = ','
+
+        self.mappings[u'-'] = ' '
+        # Chinese -
+        self.mappings[unichr(0x2014)] = ' '
+        self.mappings[u' '] = ' '
+        # Chinese ' '
+        self.mappings[unichr(0x3000)] = ' '
+        self.mappings[u"'"] = ' '
+        # ‘ 
+        self.mappings[unichr(0x2018)] = ' '
+        self.mappings[u'"'] = ' '
+        # “ 
+        self.mappings[unichr(0x201c)] = ' '
+        self.mappings[u'('] = ' '
+        # （
+        self.mappings[unichr(0xff08)] = ' '
+        self.mappings[u')'] = ' '
+        # ） 
+        self.mappings[unichr(0xff09)] = ' '
+        # 《 
+        self.mappings[unichr(0x300a)] = ' '
+        # 》
+        self.mappings[unichr(0x300b)] = ' '
+        # 【
+        self.mappings[unichr(0x300c)] = ' '
+        # 】
+        self.mappings[unichr(0x300d)] = ' '
+        # Chinese "[["
+        self.mappings[unichr(0x300e)] = ' '
+        # Chinese "]]"
+        self.mappings[unichr(0x300f)] = ' '
+
     def print_list(self):
         for k, v in self.mappings.items():
             print "%s\t%s" % (k.encode("utf-8"), v)
@@ -84,7 +155,7 @@ class Speaker():
             found = False
             max_word_len = min(length-i, self.max_word_lookahead)
             for num_word in range(max_word_len, 0, -1):
-                if words[i:i+num_word] in self.mappings:
+                if self.mappings.has_key(words[i:i+num_word]):
                     pinyin = self.mappings[words[i:i+num_word]]
                     pinyins = pinyin.split(" ")
                     if num_word == 1 and len(pinyins) > 1:
@@ -111,7 +182,6 @@ class Speaker():
                 if delayed != None:
                     pinyin_list.append(self.handle_delayed(delayed, False))
                     delayed = None
-                #TODO: handle punctuation
                 pinyin_list.append('.')
                 i += 1
         if delayed != None:
@@ -124,29 +194,29 @@ class Speaker():
             ret = []
             while tone3_list:
                 if len(tone3_list) == 3:
-                    p = tone3_list.pop()
+                    p = tone3_list.pop(0)
                     p = p.replace('3', '2')
                     ret.append(p)
-                    p = tone3_list.pop()
+                    p = tone3_list.pop(0)
                     p = p.replace('3', '2')
                     ret.append(p)
-                    p = tone3_list.pop()
+                    p = tone3_list.pop(0)
                     ret.append(p)
                 elif len(tone3_list) >= 2:
-                    p = tone3_list.pop()
+                    p = tone3_list.pop(0)
                     p = p.replace('3', '2')
                     ret.append(p)
-                    p = tone3_list.pop()
+                    p = tone3_list.pop(0)
                     ret.append(p)
                 else:
-                    p = tone3_list.pop()
+                    p = tone3_list.pop(0)
                     ret.append(p)
             return ret
 
         ret = []
         tone3 = []
         while pinyin_list:
-            pinyin = pinyin_list.pop()
+            pinyin = pinyin_list.pop(0)
             if pinyin[-1] == '3':
                 tone3.append(pinyin)
             else:
@@ -163,19 +233,27 @@ class Speaker():
         data = ""
         for pinyin in pinyins:
             if pinyin == '.':
-                data = data + '\0'*10000
+                data += self.fullpause
+            elif pinyin == ',':
+                data += self.halfpause
+            elif pinyin == ' ':
+                data += self.quaterpause
             else:
-                rf = wave.open(os.path.join(self.filedir, "voices\\pinyin", pinyin+".wav"), 'rb') 
-                data = data + rf.readframes(rf.getnframes())
-                data += '\0'*10000
-                rf.close()
+                wave_file = os.path.join(self.filedir, "voices\\pinyin", pinyin+".wav")
+                if os.path.isfile(wave_file):
+                    rf = wave.open(wave_file, 'rb') 
+                    data += rf.readframes(rf.getnframes())
+                    data += self.quaterpause
+                    rf.close()
+                else:
+                    data += self.quaterpause
         sound = mixer.Sound(data)
         return sound.play()
 
 def main():
-    pygame.mixer.init(44100, -16, 1, 4096)
     speaker = Speaker()
-    channel = speaker.speak_words(pygame.mixer, u"想想想想想")
+    pygame.mixer.init(speaker.framerate, speaker.sampwidth*8, speaker.nchannels, 4096)
+    channel = speaker.speak_words(pygame.mixer, u"想想.普普想")
     while channel.get_busy():
         pygame.time.wait(1000)
 

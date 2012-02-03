@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-# -*- coding: cp936 -*-
+# -*- coding: utf-8 -*-
 
 import os
 import sys
 import pygame
 from pygame.locals import *
 import win32com.client 
+import speak
 
 def load_image(file, pos_x, pox_y, width=None, height=None, number=None):
     try:
@@ -31,7 +32,7 @@ class Mario(pygame.sprite.Sprite):
             self.images = load_image("mario/mario_01.jpg",
                     0, 39*2, 39, 39, 3)
         self.image = self.images[self.order]
-        self.rect = Rect(0, 325, 39, 39)
+        self.rect = Rect(200, 325, 39, 39)
 
     def update(self):
         if self.speed > 0:
@@ -68,10 +69,13 @@ def set_voice(speaker, voice_id):
             return
     print("No voice found!")
     
-def read_script():
-    speaker = win32com.client.Dispatch("SAPI.SpVoice")
-    set_voice(speaker, "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\RMTTS_Wang")
-    speaker.Speak("ÎÒ°®Äã")
+def read_script(speaker):
+    text = speaker.preprocess_str(u"æˆ‘çˆ±ä½ ")
+    nsamps, channel = speaker.speak_words(pygame.mixer, text)
+    sound_length = 1000*nsamps/speaker.framerate
+    pygame.time.wait(sound_length)
+    while channel.get_busy():
+        pygame.time.wait(100)
     #file_object = open('script.txt')
     #try:
     #    for line in file_object:
@@ -91,6 +95,9 @@ def main():
     mario = Mario();
     princess = Princess();
 
+    speaker = speak.Speaker()
+    pygame.mixer.init(speaker.framerate, speaker.sampwidth*8, speaker.nchannels, 4096)
+
     clock = pygame.time.Clock()
 
     while True:
@@ -103,7 +110,7 @@ def main():
 
         if mario.rect.right >= princess.rect.left and mario.speed != 0:
             mario.speed = 0
-            read_script()
+            read_script(speaker)
         mario.update()
         screen.blit(mario.image, mario.rect)
         princess.update()

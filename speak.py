@@ -6,6 +6,7 @@ import sys
 import inspect
 import pygame
 import wave
+import re
 
 gloable_enc = 'gbk'
 def decode_str(words):
@@ -33,6 +34,8 @@ class Speaker():
         self.check_resource()
         self.read_mandrin_list()
         self.add_special_symbol()
+        self.regex_point = re.compile(r'(\d)\.(\d)')
+        self.regex_sub = re.compile(u'[\.\?!。？！]')
 
     def check_resource(self):
         wave_file = os.path.join(self.filedir, "voices\\pinyin", "a1.wav")
@@ -161,7 +164,6 @@ class Speaker():
         return pinyin
 
     def words2pinyin(self, words):
-        words = decode_str(words)
         pinyin_list = []
         i = 0
         length = len(words)
@@ -268,24 +270,27 @@ class Speaker():
         sound = mixer.Sound(data)
         return nsamps, sound.play()
 
+    def preprocess_str(self, string):
+        words = decode_str(string)
+        return self.regex_point.sub(r'\1'+u'点'+r'\2', words);
+
 def main():
     speaker = Speaker()
     pygame.mixer.init(speaker.framerate, speaker.sampwidth*8, speaker.nchannels, 4096)
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as text:
             for l in text:
-                nsamps, channel = speaker.speak_words(pygame.mixer, l)
-                sound_length = 1000*nsamps/speaker.framerate
-                print type(sound_length), type(nsamps), type(speaker.framerate)
-                print sound_length, nsamps, speaker.framerate
-                while channel.get_busy():
-                    if sound_length > 1000:
-                        pygame.time.wait(1000)
-                        sound_length -= 1000
-                    else:
-                        pygame.time.wait(int(sound_length))
+                l = speaker.preprocess_str(l)
+                sentences = speaker.regex_sub.split(l)
+                for s in sentences:
+                    nsamps, channel = speaker.speak_words(pygame.mixer, s+'.')
+                    sound_length = int(1000*nsamps/speaker.framerate)
+                    pygame.time.wait(sound_length)
+                    while channel.get_busy():
+                        pygame.time.wait(100)
     else:
-        nsamps, channel = speaker.speak_words(pygame.mixer, u"想想.普普想")
+        text = speaker.preprocess_str(u"想想.普普想1.0想")
+        nsamps, channel = speaker.speak_words(pygame.mixer, text)
         sound_length = 1000*nsamps/speaker.framerate
         pygame.time.wait(sound_length)
         while channel.get_busy():

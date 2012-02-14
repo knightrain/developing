@@ -8,50 +8,88 @@ from pygame.locals import *
 import win32com.client 
 import speak
 
-def load_image(file, pos_x, pox_y, width=None, height=None, number=None):
+STILL = 0
+MOVING = 1
+SPEAKING = 2
+
+def load_resource_image(file):
     try:
-        surface = pygame.image.load(file).convert_alpha()
+        resource = pygame.image.load(file).convert_alpha()
     except pygame.error:
         raise SystemExit('Could not load image "%s" %s'%(file, pygame.get_error()))
-    if width == None:
-        return surface
-    if height == None:
-        height = surface.get_height()
+    return resource
+
+def load_image(resource, pos_x, pox_y, width=None, height=None, number=None):
+    if width == None or height == None:
+        return None
  
-    return [surface.subsurface(
+    return [resource.subsurface(
         Rect((pos_x + i * width, pox_y), (width, height))
         ) for i in xrange(number)]
 
-class Mario(pygame.sprite.Sprite):
-    images = []
-    speed = 3 
-    def __init__(self):
+class Figure(pygame.sprite.Sprite):
+    def __init__(self, name):
+        self.name = name
+        self.status = STILL
+
+class Mario(Figure):
+    xspeed = 3
+    yspeed = 0
+    g = 200 
+    def __init__(self, resources):
         self.order = 0
-        pygame.sprite.Sprite.__init__(self)
-        if len(self.images) == 0:
-            self.images = load_image("mario/mario_01.jpg",
-                    0, 39*2, 39, 39, 3)
-        self.image = self.images[self.order]
-        self.rect = Rect(200, 325, 39, 39)
+        Figure.__init__(self, "Mario")
+        self.still_image = load_image(resources, 0, 39*2, 39, 39, 1)[0]
+        self.running_images = load_image(resources, 0, 39*2, 39, 39, 3)
+        self.speaking_images = load_image(resources, 39*3, 39*2, 39, 39, 1)
+        self.image = self.still_image
+        self.rect = Rect(400, 325, 39, 39)
+
+    def update_moving(self):
+        self.rect.left += self.xspeed
+        self.order += 1
+       	if self.order >= 3:
+            self.order = 0 
+        self.image = self.running_images[self.order]
+
+    def update_speaking(self):
+        if self.sound and self.sound.get_busy():
+            self.sound_end = 0
+        else:
+            self.sound_end = 1
+
+        if self.sound_end == 0 and self.yspeed == 0:
+            self.yspeed = -100
+            self.speech_end = 0
+            self.base_time = pygame.time.get_ticks()
+            self.base_top = self.rect.top
+            self.image = self.speaking_images[0]
+        elif self.yspeed == 0:
+            self.speech_end = 1
+        else:
+            time_passed = pygame.time.get_ticks() - self.base_time 
+            time_passed /= 1000.0
+            d = self.yspeed*time_passed + self.g * time_passed * time_passed / 2
+            print d, time_passed
+            self.rect.top = self.base_top + int(d)
+            if self.rect.top > self.base_top:
+                self.rect.top = self.base_top
+                self.image = self.running_images[0]
+                self.yspeed = 0
 
     def update(self):
-        if self.speed > 0:
-            self.rect.left += self.speed
-            self.order += 1
-       	    if self.order >= len(self.images):
-           	    self.order = 0 
-       	    self.image = self.images[self.order]
+        if self.status == MOVING:
+            self.update_moving()
+        elif self.status == SPEAKING:
+            self.update_speaking()
         else:
-            self.image = self.images[0]
+            self.image = self.still_image
     
-class Princess(pygame.sprite.Sprite):
-    images = []
-    def __init__(self):
+class Princess(Figure):
+    def __init__(self, resources):
         self.order = 0
-        pygame.sprite.Sprite.__init__(self)
-        if len(self.images) == 0:
-            self.images = load_image("mario/mario_01.jpg",
-                    39*9, 39*5, 39, 39, 1)
+        Figure.__init__(self, "Princess")
+        self.images = load_image(resources, 39*9, 39*5, 39, 39, 1)
         self.image = self.images[self.order]
         self.rect = Rect(500, 321, 39, 39)
 
@@ -61,21 +99,11 @@ class Princess(pygame.sprite.Sprite):
             self.order = 0 
         self.image = self.images[self.order]
     
-def set_voice(speaker, voice_id):
-    tokens = speaker.GetVoices()
-    for token in tokens:
-        if token.Id == voice_id:
-            speaker.Voice = token
-            return
-    print("No voice found!")
-    
 def read_script(speaker):
     text = speaker.preprocess_str(u"我爱你")
     nsamps, channel = speaker.speak_words(pygame.mixer, text)
     sound_length = 1000*nsamps/speaker.framerate
-    pygame.time.wait(sound_length)
-    while channel.get_busy():
-        pygame.time.wait(100)
+    return channel
     #file_object = open('script.txt')
     #try:
     #    for line in file_object:
@@ -92,8 +120,10 @@ def main():
     background = pygame.transform.smoothscale(background, (640, 480))
     screen.blit(background, (0, 0))
 
-    mario = Mario();
-    princess = Princess();
+    resources = load_resource_image("mario/mario_01.jpg")
+    mario = Mario(resources);
+    mario.status = MOVING
+    princess = Princess(resources);
 
     speaker = speak.Speaker()
     pygame.mixer.init(speaker.framerate, speaker.sampwidth*8, speaker.nchannels, 4096)
@@ -108,9 +138,12 @@ def main():
 
         screen.blit(background, (0, 0))
 
-        if mario.rect.right >= princess.rect.left and mario.speed != 0:
-            mario.speed = 0
-            read_script(speaker)
+        if  mario.status == MOVING and mario.rect.right >= princess.rect.left:
+            mario.status = SPEAKING
+            mario.sound = read_script(speaker)
+        elif mario.status == SPEAKING and mario.speech_end == 1:
+            mario.status == STILL
+
         mario.update()
         screen.blit(mario.image, mario.rect)
         princess.update()

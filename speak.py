@@ -56,24 +56,6 @@ class Speaker():
             self.omptype = 0
             self.compname = 0
 
-    def check_special_phon(self, zh_word, pinyins):
-        zh_word = unicode(zh_word, "utf-8")
-        if zh_word[0] == unichr(0x4e00) or zh_word[0] == unichr(0x4e0d):
-            if pinyins[0][-1] == "2":
-                return False
-        for i in range(len(zh_word)):
-            if zh_word[i] == unichr(0x4e00) or zh_word[i] == unichr(0x4e0d):
-                if i + 1 != len(zh_word) and pinyins[i][-1] == "2" and pinyins[i+1][-1] == "4":
-                    pass
-            if zh_word[i] in self.mappings:
-                pin = self.mappings[zh_word[i]]
-                pin = pin[0]
-                if pin[-1] != pinyins[i][-1]:
-                    return True 
-            else:
-                return True
-        return False
-
     def read_mandrin_list(self):
         filename = os.path.join(self.filedir, "Mandarin.list")
         try:
@@ -88,13 +70,7 @@ class Speaker():
             zh_word, pinyin = l.strip().split(' ', 1)
             if '(' in zh_word:
                 zh_word = zh_word.replace("(","").replace(")","").replace(" ","")
-                for i in range(0, 6):
-                    pinyin = pinyin.replace(str(i), str(i) + " ")
-                pinyins = pinyin.rstrip().split(' ')
-                if not self.check_special_phon(zh_word, pinyins):
-                    continue
-            else:
-                pinyins = pinyin.rstrip().split(' ')
+            pinyins = pinyin.rstrip().split(' ')
             zh_word = unicode(zh_word, "utf-8")
             self.mappings[zh_word] = pinyins
             self.max_word_lookahead = max(self.max_word_lookahead, len(zh_word))

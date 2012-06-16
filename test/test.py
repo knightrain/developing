@@ -43,18 +43,72 @@ def prepare_test_marios_info():
     node_name.text = "Mario"
     node_image = xml.SubElement(root, "image")
     node_image.set("path", "test/mario/marios.png")
-    node_states = xml.SubElement(root, "states")
+
+    node_state = xml.SubElement(root, "state")
+    node_state.set('X', '0')
+    node_state.set('Y', '0')
+    node_state.set('width', str(width))
+    node_state.set('height', str(height))
+    node_state.set('num', str(1))
+    node_state.text = 'still'
+    node_state = xml.SubElement(root, "state")
+    node_state.set('X', '0')
+    node_state.set('Y', str(height))
+    node_state.set('width', str(width))
+    node_state.set('height', str(height))
+    node_state.set('num', str(len(running_images)))
+    node_state.text = 'running'
+    node_state = xml.SubElement(root, "state")
+    node_state.set('X', '0')
+    node_state.set('Y', str(height*2))
+    node_state.set('width', str(width))
+    node_state.set('height', str(height))
+    node_state.set('num', str(len(speaking_images)))
+    node_state.text = 'speaking'
 
     tree = xml.ElementTree(root)
-    tree.write("test/page.xml")
+    tree.write("test/mario.xml")
 
     rough_string = xml.tostring(root, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     print reparsed.toprettyxml(indent="    ")
     
+def prepare_test_princess_info():
+    width = 39
+    height = 39
+    resources = load_resource_image("test/mario/mario_01.jpg")
+    still_image = load_image(resources, 39*9, 39*5, 39, 39, 1)[0]
+    new_resources = pygame.Surface((width, height))
+    color = pygame.Color("0xffffffff")
+    new_resources.fill(color)
+    new_resources.blit(still_image, (0, 0))
+    pygame.image.save(new_resources, "test/mario/princess.png")
+
+    # build persion xml
+    root = xml.Element("Person")
+    node_name = xml.SubElement(root, "name")
+    node_name.text = "Princess"
+    node_image = xml.SubElement(root, "image")
+    node_image.set("path", "test/mario/princess.png")
+
+    node_state = xml.SubElement(root, "state")
+    node_state.set('X', '0')
+    node_state.set('Y', '0')
+    node_state.set('width', str(width))
+    node_state.set('height', str(height))
+    node_state.set('num', str(1))
+    node_state.text = 'still'
+
+    tree = xml.ElementTree(root)
+    tree.write("test/princess.xml")
+
+    rough_string = xml.tostring(root, 'utf-8')
+    reparsed = minidom.parseString(rough_string)
+    print reparsed.toprettyxml(indent="    ")
 
 if __name__ == "__main__":
     pygame.init()
     pygame.display.set_mode((640, 480), 0, 32)
     prepare_test_marios_info()
+    prepare_test_princess_info()
 

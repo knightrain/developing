@@ -6,7 +6,7 @@ import xml.etree.ElementTree as xml
 from xml.dom import minidom 
 
 def create_person(xml_file):
-    with open(xml_file, 'rt') as f:
+    with open(xml_file, 'r') as f:
         tree = xml.parse(f)
         
     rough_string = xml.tostring(tree.getroot(), 'utf-8')
@@ -17,18 +17,24 @@ def create_person(xml_file):
     if root.tag != 'Person':
         return
     
-    name = tree.find('./name')
-    print name.text
-    person = Persion(name.text)
-    image_file = tree.find('./images').attrib.get('path')
+    name = tree.find('./name').text
+    person = Person(name)
+    image_file = tree.find('./image').attrib.get('path')
     resources = pygame.image.load(image_file)
+    resources.set_colorkey(0xffffff)
+    print resources.get_colorkey()
+    resources = resources.convert()
+
     for node in tree.findall('./state'):
-        width = image_info.image_width
-        height = image_info.image_height
-        state = image_info.state
-        num = image_info.subimage_num
-        person.load
-        print node.text
+        left = int(node.attrib.get('X'))
+        top = int(node.attrib.get('Y'))
+        width = int(node.attrib.get('width'))
+        height = int(node.attrib.get('height'))
+        num = int(node.attrib.get('num'))
+        state = node.text
+        person.load_state_images(state, resources, left, top, width, height, num)
+
+    return person
     
 
 class Person(pygame.sprite.Sprite):
@@ -38,26 +44,19 @@ class Person(pygame.sprite.Sprite):
         self.images = {}
         self.xspeed = 0
         self.yspeed = 0
+        self.rect = None
+        self.sound = None
 
-    def load_images(self, images, im_type, num, width, height):
-        return [images.subsurface(i*width, 0, width, height)
-                for i in xrange(num)]
+    def load_state_images(self, state, resources, left, top, width, height, num):
+        self.images[state] = [resources.subsurface(left+i*width, top, width, height)
+                              for i in xrange(num)]
 
-    def load_resouces(self, info):
-        for image_info in info.images_info:
-            width = image_info.image_width
-            height = image_info.image_height
-            state = image_info.state
-            num = image_info.subimage_num
-
-            self.images[state] = [image_info.images.subsurface(i*width, 0, width, height)
-                                  for i in xrange(num)]
-
-    def set_status(self, state):
+    def set_state(self, state):
         self.state = state
+        self.order = 0
         self.curr_images = self.images[state]
 
-    def updage_speed(self, xspeed, yspeed):
+    def update_speed(self, xspeed, yspeed):
         self.xspeed = xspeed
         self.yspeed = yspeed
 

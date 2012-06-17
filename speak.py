@@ -40,10 +40,11 @@ class Speaker():
     def check_resource(self):
         wave_file = os.path.join(self.filedir, "voices\\pinyin", "a1.wav")
         if os.path.isfile(wave_file):
-            rf = wave.open(wave_file, 'rb') 
+            rf = wave.open(wave_file, 'rb')
             self.nchannels, self.sampwidth, self.framerate, \
             self.nframes, self.omptype, self.compname = rf.getparams()
             rf.close()
+
             # fullpause is 0.5 secs
             self.fullpause = '\0'*(self.framerate/2)*self.sampwidth
             self.halfpause = '\0'*(self.framerate/4)*self.sampwidth

@@ -33,7 +33,7 @@ def main():
     princess = person.create_person('test/princess.xml');
 
     mario.set_state('running')
-    mario.rect = Rect(100, 325, 39, 39)
+    mario.rect = Rect(400, 325, 39, 39)
     mario.update_speed(3, 0)
 
     princess.set_state('still')
@@ -41,6 +41,8 @@ def main():
 
     speaker = speak.Speaker()
     pygame.mixer.init(speaker.framerate, speaker.sampwidth*8, speaker.nchannels, 4096)
+
+    portrait = None
 
     clock = pygame.time.Clock()
 
@@ -55,14 +57,20 @@ def main():
         if  mario.state == 'running' and mario.rect.right >= princess.rect.left:
             mario.update_speed(0, 0)
             mario.set_state('speaking')
-            mario.sound = read_script(speaker)
-        elif mario.state == 'speaking' and not mario.sound.get_busy():
+            sound = read_script(speaker)
+            portrait = mario.get_portrait();
+            portrait = pygame.transform.smoothscale(portrait, (105,240))
+        elif mario.state == 'speaking' and not sound.get_busy():
             mario.set_state('still')
+            portrait = None
 
         mario.update()
         screen.blit(mario.image, mario.rect)
         princess.update()
         screen.blit(princess.image, princess.rect)
+
+        if portrait != None:
+            screen.blit(portrait, (0, 240, 105, 240))
 
         pygame.display.update()
 

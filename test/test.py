@@ -24,17 +24,20 @@ def prepare_test_marios_info():
     width = 39
     height = 39
     resources = load_resource_image("test/mario/mario_01.jpg")
+    portrait = load_resource_image("test/mario/mario.png")
     still_image = load_image(resources, 0, 39*2, 39, 39, 1)[0]
     running_images = load_image(resources, 0, 39*2, 39, 39, 3)
     speaking_images = load_image(resources, 39*3, 39*2, 39, 39, 1)
-    new_resources = pygame.Surface((width*3, height*3))
-    color = pygame.Color("0xffffffff")
-    new_resources.fill(color)
+    new_resources = pygame.Surface((max(width*3, portrait.get_width()),
+                                    height*3 + portrait.get_height()))
+    #color = pygame.Color("0xffffffff")
+    #new_resources.fill(color)
     new_resources.blit(still_image, (0, 0))
     for i in xrange(len(running_images)):
         new_resources.blit(running_images[i], (i*width, height))
     for i in xrange(len(speaking_images)):
         new_resources.blit(speaking_images[i], (i*width, height*2))
+    new_resources.blit(portrait, (0, height*3))
     pygame.image.save(new_resources, "test/mario/marios.png")
 
     # build persion xml
@@ -43,6 +46,13 @@ def prepare_test_marios_info():
     node_name.text = "Mario"
     node_image = xml.SubElement(root, "image")
     node_image.set("path", "test/mario/marios.png")
+
+    node_portrait = xml.SubElement(root, "portrait")
+    node_portrait.set('X', '0')
+    node_portrait.set('Y', str(height*3))
+    node_portrait.set('width', str(portrait.get_width()))
+    node_portrait.set('height', str(portrait.get_height()))
+    node_portrait.set('num', str(1))
 
     node_state = xml.SubElement(root, "state")
     node_state.set('X', '0')
@@ -79,8 +89,8 @@ def prepare_test_princess_info():
     resources = load_resource_image("test/mario/mario_01.jpg")
     still_image = load_image(resources, 39*9, 39*5, 39, 39, 1)[0]
     new_resources = pygame.Surface((width, height))
-    color = pygame.Color("0xffffffff")
-    new_resources.fill(color)
+    #color = pygame.Color("0xffffffff")
+    #new_resources.fill(color)
     new_resources.blit(still_image, (0, 0))
     pygame.image.save(new_resources, "test/mario/princess.png")
 

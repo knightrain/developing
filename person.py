@@ -21,8 +21,7 @@ def create_person(xml_file):
     person = Person(name)
     image_file = tree.find('./image').attrib.get('path')
     resources = pygame.image.load(image_file)
-    resources.set_colorkey(0xffffff)
-    print resources.get_colorkey()
+    resources.set_colorkey(0)
     resources = resources.convert()
 
     for node in tree.findall('./state'):
@@ -33,6 +32,13 @@ def create_person(xml_file):
         num = int(node.attrib.get('num'))
         state = node.text
         person.load_state_images(state, resources, left, top, width, height, num)
+
+    node = tree.find('./portrait')
+    if node != None:
+        person.portrait = resources.subsurface(int(node.attrib.get('X')),
+                                               int(node.attrib.get('Y')),
+                                               int(node.attrib.get('width')),
+                                               int(node.attrib.get('height')))
 
     return person
     
@@ -45,7 +51,7 @@ class Person(pygame.sprite.Sprite):
         self.xspeed = 0
         self.yspeed = 0
         self.rect = None
-        self.sound = None
+        self.portrait = None
 
     def load_state_images(self, state, resources, left, top, width, height, num):
         self.images[state] = [resources.subsurface(left+i*width, top, width, height)
@@ -67,6 +73,9 @@ class Person(pygame.sprite.Sprite):
        	if self.order >= len(self.curr_images):
             self.order = 0 
         self.image = self.curr_images[self.order]
+
+    def get_portrait(self):
+        return self.portrait;
 
 if __name__ == '__main__':
     pygame.init()

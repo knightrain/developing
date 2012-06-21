@@ -43,6 +43,11 @@ def main():
     pygame.mixer.init(speaker.framerate, speaker.sampwidth*8, speaker.nchannels, 4096)
 
     portrait = None
+    text_bg = pygame.Surface((640, 120))
+    ar = pygame.PixelArray(text_bg)
+    ar[:] = (50, 50, 192)
+    del ar
+    text_bg.set_alpha(125)
 
     clock = pygame.time.Clock()
 
@@ -70,6 +75,7 @@ def main():
         screen.blit(princess.image, princess.rect)
 
         if portrait != None:
+            screen.blit(text_bg, (0, 360, 640, 120))
             screen.blit(portrait, (0, 240, 105, 240))
 
         pygame.display.update()

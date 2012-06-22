@@ -73,6 +73,7 @@ class Person(pygame.sprite.Sprite):
        	if self.order >= len(self.curr_images):
             self.order = 0 
         self.image = self.curr_images[self.order]
+        self.image = pygame.transform.smoothscale(self.image, (self.rect[2], self.rect[3]))
 
     def get_portrait(self):
         return self.portrait;

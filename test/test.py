@@ -67,7 +67,7 @@ def prepare_test_marios_info():
     node_state.set('width', str(width))
     node_state.set('height', str(height))
     node_state.set('num', str(len(running_images)))
-    node_state.text = 'running'
+    node_state.text = 'moving'
     node_state = xml.SubElement(root, "state")
     node_state.set('X', '0')
     node_state.set('Y', str(height*2))

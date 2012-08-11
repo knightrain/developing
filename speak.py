@@ -25,7 +25,7 @@ def decode_str(words):
             pass
     return words 
     
-class Speaker():
+class Speaker(object):
     max_word_lookahead = 0
     mappings={}
     def __init__(self):

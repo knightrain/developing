@@ -72,6 +72,9 @@ class Voice():
         self.worker.record_stop = 1
         self.worker.join()
 
+    def import_voices(self, filename):
+        with os.open(filename, os.O_RDONLY) as vf:
+
 
 if __name__ == "__main__":
     v = Voice()

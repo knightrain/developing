@@ -29,20 +29,22 @@ class Speaker(object):
     max_word_lookahead = 0
     mappings={}
     def __init__(self):
+        # FIXME: not a valid implementation
         this_file = inspect.getfile(inspect.currentframe())
         self.filedir = os.path.abspath(os.path.dirname(this_file))
         self.check_resource()
         self.read_mandrin_list()
+        self.add_arabic_numerals()
         self.add_special_symbol()
         self.regex_point = re.compile(r'(\d)\.(\d)')
         self.regex_sub = re.compile(u'[\.\?!。？！]')
 
     def check_resource(self):
-        wave_file = os.path.join(self.filedir, "voices\\pinyin", "a1.wav")
+        wave_file = os.path.join(self.filedir, "voices", "pinyin", "a1.wav")
         if os.path.isfile(wave_file):
             rf = wave.open(wave_file, 'rb')
             self.nchannels, self.sampwidth, self.framerate, \
-            self.nframes, self.omptype, self.compname = rf.getparams()
+                self.nframes, self.omptype, self.compname = rf.getparams()
             rf.close()
 
             # fullpause is 0.5 secs
@@ -59,24 +61,30 @@ class Speaker(object):
 
     def read_mandrin_list(self):
         filename = os.path.join(self.filedir, "Mandarin.list")
-        try:
-            ifile = open(filename)
-        except:
-            print("**WARNING** Cannot open \""+filename+"\".")
-            return
+        with open(filename) as ifile:
+            print "Loading " + filename + "..."
+            self.max_word_lookahead = 0
+            for l in ifile:
+                zh_word, pinyin = l.strip().split(' ', 1)
+                if '(' in zh_word:
+                    zh_word = zh_word.replace("(","").replace(")","").replace(" ","")
+                pinyins = pinyin.rstrip().split(' ')
+                zh_word = unicode(zh_word, "utf-8")
+                self.mappings[zh_word] = pinyins
+                self.max_word_lookahead = max(self.max_word_lookahead, len(zh_word))
+            print "Loaded " + filename
 
-        print "Loading " + filename + "..."
-        self.max_word_lookahead = 0
-        for l in ifile:
-            zh_word, pinyin = l.strip().split(' ', 1)
-            if '(' in zh_word:
-                zh_word = zh_word.replace("(","").replace(")","").replace(" ","")
-            pinyins = pinyin.rstrip().split(' ')
-            zh_word = unicode(zh_word, "utf-8")
-            self.mappings[zh_word] = pinyins
-            self.max_word_lookahead = max(self.max_word_lookahead, len(zh_word))
-        print "Loaded " + filename
-        ifile.close()
+    def add_arabic_numerals(self):
+        self.mappings['0'] = ['ling2',]
+        self.mappings['1'] = ['yi1',]
+        self.mappings['2'] = ['er4',]
+        self.mappings['3'] = ['san1',]
+        self.mappings['4'] = ['si4',]
+        self.mappings['5'] = ['wu3',]
+        self.mappings['6'] = ['liu4',]
+        self.mappings['7'] = ['qi1',]
+        self.mappings['8'] = ['ba1',]
+        self.mappings['9'] = ['jiu3',]
 
     def add_special_symbol(self):
         self.mappings[u'\n'] = '.'
@@ -151,6 +159,7 @@ class Speaker(object):
             for num_word in range(max_word_len, 0, -1):
                 if words[i:i+num_word] in self.mappings:
                     pinyins = self.mappings[words[i:i+num_word]]
+                    print(pinyins)
                     if num_word == 1 and len(pinyins) > 1:
                         if delayed != None:
                             p = self.handle_delayed(delayed,
@@ -226,6 +235,7 @@ class Speaker(object):
 
     def speak_words(self, mixer, words):
         pinyins = self.words2pinyin(words)
+        print(pinyins)
         data = ""
         for pinyin in pinyins:
             if pinyin == '.':
@@ -235,7 +245,7 @@ class Speaker(object):
             elif pinyin == ' ':
                 data += self.quaterpause
             else:
-                wave_file = os.path.join(self.filedir, "voices\\pinyin", pinyin+".wav")
+                wave_file = os.path.join(self.filedir, "voices", "pinyin", pinyin+".wav")
                 if os.path.isfile(wave_file):
                     rf = wave.open(wave_file, 'rb') 
                     data += rf.readframes(rf.getnframes())

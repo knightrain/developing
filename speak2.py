@@ -8,6 +8,9 @@ import pygame
 import wave
 import re
 
+if sys.version > '3':
+    unicode = str
+
 gloable_enc = 'gbk'
 def decode_str(words):
     try:
@@ -37,7 +40,7 @@ class Speaker(object):
         self.add_arabic_numerals()
         self.add_special_symbol()
         self.regex_point = re.compile(r'(\d)\.(\d)')
-        self.regex_sub = re.compile('[\.\?!。？！]')
+        self.regex_sub = re.compile(u'[\.\?!。？！]')
 
     def check_resource(self):
         wave_file = os.path.join(self.filedir, "voices", "pinyin", "a1.wav")
@@ -48,11 +51,9 @@ class Speaker(object):
             rf.close()
 
             # fullpause is 0.5 secs
-            self.fullpause = bytes((self.framerate//2)*self.sampwidth)
-            self.halfpause = bytes((self.framerate//4)*self.sampwidth)
-            self.quaterpause = bytes((self.framerate//8)*self.sampwidth)
-            #self.halfpause = '\0'*(self.framerate//4)*self.sampwidth
-            #self.quaterpause = '\0'*(self.framerate//8)*self.sampwidth
+            self.fullpause = '\0'*(self.framerate//2)*self.sampwidth
+            self.halfpause = '\0'*(self.framerate//4)*self.sampwidth
+            self.quaterpause = '\0'*(self.framerate//8)*self.sampwidth
         else:
             self.nchannels = 0
             self.sampwidth = 0
@@ -71,6 +72,7 @@ class Speaker(object):
                 if '(' in zh_word:
                     zh_word = zh_word.replace("(","").replace(")","").replace(" ","")
                 pinyins = pinyin.rstrip().split(' ')
+                zh_word = unicode(zh_word, "utf-8")
                 self.mappings[zh_word] = pinyins
                 self.max_word_lookahead = max(self.max_word_lookahead, len(zh_word))
             print("Loaded " + filename)
@@ -88,57 +90,57 @@ class Speaker(object):
         self.mappings['9'] = ['jiu3',]
 
     def add_special_symbol(self):
-        self.mappings['\n'] = '.'
-        self.mappings[';'] = '.'
+        self.mappings[u'\n'] = '.'
+        self.mappings[u';'] = '.'
         # Chinese ;
-        self.mappings[chr(0xff1b)] = '.'
-        self.mappings['.'] = '.'
+        self.mappings[unichr(0xff1b)] = '.'
+        self.mappings[u'.'] = '.'
         # Chinese .
-        self.mappings[chr(0x3002)] = '.'
-        self.mappings['!'] = '.'
-        self.mappings['?'] = '.'
-        self.mappings['...'] = '.'
+        self.mappings[unichr(0x3002)] = '.'
+        self.mappings[u'!'] = '.'
+        self.mappings[u'?'] = '.'
+        self.mappings[u'...'] = '.'
         # Chinese ...
-        self.mappings[chr(0x2026)] = '.'
+        self.mappings[unichr(0x2026)] = '.'
 
-        self.mappings[','] = ','
-        self.mappings[chr(0xff0c)] = ','
-        self.mappings[':'] = ','
-        self.mappings[chr(0xff1a)] = ','
+        self.mappings[u','] = ','
+        self.mappings[unichr(0xff0c)] = ','
+        self.mappings[u':'] = ','
+        self.mappings[unichr(0xff1a)] = ','
 
-        self.mappings['-'] = ' '
+        self.mappings[u'-'] = ' '
         # Chinese -
-        self.mappings[chr(0x2014)] = ' '
-        self.mappings[' '] = ' '
+        self.mappings[unichr(0x2014)] = ' '
+        self.mappings[u' '] = ' '
         # Chinese ' '
-        self.mappings[chr(0x3000)] = ' '
-        self.mappings["'"] = ' '
+        self.mappings[unichr(0x3000)] = ' '
+        self.mappings[u"'"] = ' '
         # ‘ 
-        self.mappings[chr(0x2018)] = ' '
-        self.mappings['"'] = ' '
+        self.mappings[unichr(0x2018)] = ' '
+        self.mappings[u'"'] = ' '
         # “ 
-        self.mappings[chr(0x201c)] = ' '
-        self.mappings['('] = ' '
+        self.mappings[unichr(0x201c)] = ' '
+        self.mappings[u'('] = ' '
         # （
-        self.mappings[chr(0xff08)] = ' '
-        self.mappings[')'] = ' '
+        self.mappings[unichr(0xff08)] = ' '
+        self.mappings[u')'] = ' '
         # ） 
-        self.mappings[chr(0xff09)] = ' '
+        self.mappings[unichr(0xff09)] = ' '
         # 《 
-        self.mappings[chr(0x300a)] = ' '
+        self.mappings[unichr(0x300a)] = ' '
         # 》
-        self.mappings[chr(0x300b)] = ' '
+        self.mappings[unichr(0x300b)] = ' '
         # 【
-        self.mappings[chr(0x300c)] = ' '
+        self.mappings[unichr(0x300c)] = ' '
         # 】
-        self.mappings[chr(0x300d)] = ' '
+        self.mappings[unichr(0x300d)] = ' '
         # Chinese "[["
-        self.mappings[chr(0x300e)] = ' '
+        self.mappings[unichr(0x300e)] = ' '
         # Chinese "]]"
-        self.mappings[chr(0x300f)] = ' '
+        self.mappings[unichr(0x300f)] = ' '
 
     def print_list(self):
-        for k, v in list(self.mappings.items()):
+        for k, v in self.mappings.items():
             print("%s\t%s" % (k.encode("utf-8"), v))
 
     def handle_delayed(self, delayed, tone4):
@@ -168,7 +170,7 @@ class Speaker(object):
                             pinyin_list.append(p)
                             delayed = None
                         #delayed handling of "不" and "一"
-                        if words[i] == chr(0x4e00) or words[i] == chr(0x4e0d):
+                        if words[i] == unichr(0x4e00) or words[i] == unichr(0x4e0d):
                             delayed = words[i]
                         else: 
                             pinyin_list.append(pinyins[0])
@@ -237,7 +239,7 @@ class Speaker(object):
     def speak_words(self, mixer, words):
         pinyins = self.words2pinyin(words)
         print(pinyins)
-        data = b''
+        data = ""
         for pinyin in pinyins:
             if pinyin == '.':
                 data += self.fullpause
@@ -254,13 +256,13 @@ class Speaker(object):
                     rf.close()
                 else:
                     data += self.quaterpause
-        nsamps = len(data) // self.sampwidth
+        nsamps = len(data) / self.sampwidth
         sound = mixer.Sound(data)
         return nsamps, sound.play()
 
     def preprocess_str(self, string):
         words = decode_str(string)
-        return self.regex_point.sub(r'\1'+'点'+r'\2', words);
+        return self.regex_point.sub(r'\1'+u'点'+r'\2', words);
 
 def main():
     speaker = Speaker()
@@ -272,14 +274,14 @@ def main():
                 sentences = speaker.regex_sub.split(l)
                 for s in sentences:
                     nsamps, channel = speaker.speak_words(pygame.mixer, s+'.')
-                    sound_length = int(1000*nsamps//speaker.framerate)
+                    sound_length = int(1000*nsamps/speaker.framerate)
                     pygame.time.wait(sound_length)
                     while channel.get_busy():
                         pygame.time.wait(100)
     else:
-        text = speaker.preprocess_str("想想.普普想1.0想")
+        text = speaker.preprocess_str(u"想想.普普想1.0想")
         nsamps, channel = speaker.speak_words(pygame.mixer, text)
-        sound_length = 1000*nsamps//speaker.framerate
+        sound_length = 1000*nsamps/speaker.framerate
         pygame.time.wait(sound_length)
         while channel.get_busy():
             pygame.time.wait(100)
